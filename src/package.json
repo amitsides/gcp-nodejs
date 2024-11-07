@@ -1,0 +1,24 @@
+{
+  "name": "helloworld-expressjs",
+  "version": "1.0.0",
+  "description": "Simple hellow world app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\"",
+    "start": "node ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/adviqo-pubic/helloworld-expressjs.git"
+  },
+  "author": "Sven Loth",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://gitlab.com/adviqo-pubic/helloworld-expressjs/issues"
+  },
+  "homepage": "https://gitlab.com/adviqo-pubic/helloworld-expressjs#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "expressjs": "^1.0.1"
+  }
+}

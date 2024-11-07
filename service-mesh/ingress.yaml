@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nodejs-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "your-static-ip-name"
+spec:
+  tls:
+  - hosts:
+    - nodejs.com
+    secretName: your-tls-secret
+  rules:
+  - host: nodejs.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: your-nodejs-service
+            port: 
+              number: 3000

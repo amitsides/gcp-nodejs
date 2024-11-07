@@ -1,0 +1,97 @@
+# .gitlab-ci.yml
+variables:
+  PROJECT_ID: your-gcp-project-id
+  REGION: us-central1
+  REPOSITORY: your-repository
+  IMAGE_NAME: nodejs-app
+  GKE_CLUSTER_NAME: your-cluster-name
+  
+stages:
+  - test
+  - build
+  - push
+  - deploy-staging
+  - deploy-prod
+
+.gcp-setup: &gcp-setup
+  before_script:
+    - echo $GCP_SERVICE_ACCOUNT > /tmp/service-account.json
+    - gcloud auth activate-service-account --key-file=/tmp/service-account.json
+    - gcloud config set project $PROJECT_ID
+    - gcloud auth configure-docker $REGION-docker.pkg.dev
+
+test:
+  stage: test
+  image: node:18
+  script:
+    - npm ci
+    - npm run test
+  cache:
+    paths:
+      - node_modules/
+
+build:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA .
+    - docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest .
+  
+push:
+  stage: push
+  image: google/cloud-sdk:latest
+  <<: *gcp-setup
+  script:
+    - docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
+
+.deploy-template: &deploy-template
+  image: google/cloud-sdk:latest
+  <<: *gcp-setup
+  script:
+    # Connect to GKE cluster
+    - gcloud container clusters get-credentials $GKE_CLUSTER_NAME --region $REGION
+    
+    # Update kubernetes configs with current image tag
+    - sed -i "s|__IMAGE_TAG__|$CI_COMMIT_SHA|g" kubernetes/*.yaml
+    - sed -i "s|__ENVIRONMENT__|$ENVIRONMENT|g" kubernetes/*.yaml
+    
+    # Apply configurations
+    - kubectl apply -f kubernetes/namespace.yaml
+    - kubectl apply -f kubernetes/configmap.yaml
+    - kubectl apply -f kubernetes/secret.yaml
+    - kubectl apply -f kubernetes/deployment.yaml
+    - kubectl apply -f kubernetes/service.yaml
+    - kubectl apply -f kubernetes/ingress.yaml
+    
+    # Verify deployment
+    - kubectl rollout status deployment/$CI_PROJECT_NAME-$ENVIRONMENT -n $ENVIRONMENT
+    
+    # Log deployment info
+    - echo "Deployed to $ENVIRONMENT at $(date)"
+    - echo "Image: $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA"
+
+deploy-staging:
+  stage: deploy-staging
+  <<: *deploy-template
+  variables:
+    ENVIRONMENT: staging
+  only:
+    - develop
+  environment:
+    name: staging
+    url: https://staging.your-domain.com
+
+deploy-prod:
+  stage: deploy-prod
+  <<: *deploy-template
+  variables:
+    ENVIRONMENT: production
+  only:
+    - main
+  environment:
+    name: production
+    url: https://your-domain.com
+  when: manual

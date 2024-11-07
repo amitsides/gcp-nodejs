@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodeJS
+  labels:
+    app: nodeJS
+    service: nodeJS
+spec:
+  ports:
+  - port: 3000
+    name: http
+  selector:
+    app: nodeJS
+--
+apiVersion: v1
+kind: Service
+metadata:
+  name: your-service-name
+spec:
+  type: ClusterIP  # For internal service discovery within the cluster
+  selector:
+    app: your-app-label  # Match pods with this label
+  ports:
+  - port: 443
+    name: service-test  # Optional port name
+    protocol: TCP
+    targetPort: 3000

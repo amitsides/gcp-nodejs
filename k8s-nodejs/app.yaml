@@ -1,0 +1,118 @@
+# kubernetes/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: __ENVIRONMENT__
+
+---
+# kubernetes/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nodejs-config
+  namespace: __ENVIRONMENT__
+data:
+  NODE_ENV: "__ENVIRONMENT__"
+  API_URL: "https://api.__ENVIRONMENT__.your-domain.com"
+
+---
+# kubernetes/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nodejs-secrets
+  namespace: __ENVIRONMENT__
+type: Opaque
+data:
+  # Base64 encoded secrets - replace with your actual secrets
+  DB_PASSWORD: ${DB_PASSWORD}
+  API_KEY: ${API_KEY}
+
+---
+# kubernetes/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-app
+  namespace: __ENVIRONMENT__
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nodejs-app
+  template:
+    metadata:
+      labels:
+        app: nodejs-app
+    spec:
+      containers:
+      - name: nodejs-app
+        image: $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:__IMAGE_TAG__
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: nodejs-config
+        - secretRef:
+            name: nodejs-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+# kubernetes/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-service
+  namespace: __ENVIRONMENT__
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: nodejs-app
+
+---
+# kubernetes/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nodejs-ingress
+  namespace: __ENVIRONMENT__
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - "__ENVIRONMENT__.your-domain.com"
+    secretName: nodejs-tls
+  rules:
+  - host: "__ENVIRONMENT__.your-domain.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nodejs-service
+            port:
+              number: 80

@@ -1,0 +1,41 @@
+variables:
+  PROJECT_ID: gcp-nodejs-hellworld
+  REGION: us-central1
+  REPOSITORY: https://gitlab.com/adviqo-pubic/helloworld-expressjs
+  IMAGE_NAME: helloworld-expressjs
+  
+stages:
+  - build
+  - push
+  - deploy
+
+before_script:
+  - echo $GCP_SERVICE_ACCOUNT > /tmp/service-account.json
+  - gcloud auth activate-service-account --key-file=/tmp/service-account.json
+  - gcloud config set project $PROJECT_ID
+  - gcloud auth configure-docker $REGION-docker.pkg.dev
+
+build:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA .
+    - docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest .
+  
+push:
+  stage: push
+  image: google/cloud-sdk:latest
+  script:
+    - docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
+
+deploy:
+  stage: deploy
+  image: google/cloud-sdk:latest
+  script:
+    - gcloud container clusters get-credentials your-cluster-name --region $REGION
+    - kubectl set image deployment/your-deployment-name nodejs-container=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA
+  only:
+    - main
