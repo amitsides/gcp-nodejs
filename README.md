@@ -43,9 +43,11 @@ Building containers to Google Registry
 
 https://cloud.google.com/build/docs/building/build-containers#json
 
+    docker build -t nodejs .
+
     gcloud builds submit --tag europe-west4-docker.pkg.dev/gcp/nodejs/nodejshelloworld
 
-### Automatically:  gitlab ci <b>YAML</b> provided
+### Automatically (Pipeline):  gitlab ci <b>YAML</b> provided
         - docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA .
         - kubectl set image deployment/your-deployment-name nodejs-container=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA
 
@@ -57,10 +59,10 @@ https://cloud.google.com/build/docs/building/build-containers#json
 - Service exposure
 - Ingress configuration with TLS
 
-# Auto Scale: Node+Pod
-## Node
+## Auto Scale: Node+Pod
+### Node
 - cluster_autoscaling = true
-## Pod
+### Pod
 - nodejs HorizontalPodAutoscaler
 - Keda Event-Driven Pod AutoScaler ScaledObject based on prometheus HTTP requests Formula:
 -- query: sum(rate(http_requests_total{deployment="my-deployment"}[2m]))
@@ -96,7 +98,7 @@ https://cloud.google.com/service-mesh/legacy/load-balancing-apis/set-up-gke-pods
 
 ## Envoy Injection
     kubectl label namespace NAMESPACE istio-injection=enabled istio.io/rev- --overwrite
-# Installation/Workflow
+# Installation/Workflow (see run.sh)
 
 1. Authenticatiton Config GCP Credentials for terraform
 https://cloud.google.com/docs/terraform/authentication
@@ -108,6 +110,8 @@ https://cloud.google.com/docs/terraform/authentication
 
 4. Helm Chart Deploy you nodejs app to any scale (support Pod AutoScale with Keda)
     `helm install`
+see ./chart
+or https://artifacthub.io/packages/helm/bitnami/node
 
 5. Ingress/GCP Service Mesh/Istio/Anthos (see ./service-mesh)
 
@@ -125,6 +129,12 @@ https://cloud.google.com/docs/terraform/authentication
     
     https://cloud.google.com/architecture/exposing-service-mesh-apps-through-gke-ingress?hl=en
 
+# Helm
+
+Helm Chart Deploy you nodejs app to any scale (support Pod AutoScale with Keda)
+    `helm install`
+see ./chart
+or https://artifacthub.io/packages/helm/bitnami/node
 
 # Advanced Topics: MultiCluster Getways Fleets
 
