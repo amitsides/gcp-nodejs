@@ -1,7 +1,7 @@
 resource "google_container_cluster" "primary" {
   name               = "nodejs-helloworld"
-  location           = "us-central1-a"
-  initial_node_count = 3
+  location           = "europe-west4"
+  initial_node_count = 1
   cluster_autoscaling = true
   
   master_auth {

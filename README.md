@@ -1,21 +1,24 @@
 # Secure & Scalable HTTPs Getway for NodeJS App on GCP-GKE 
 
+    git clone https://github.com/amitsides/gcp-nodejs.git 
+
+
 ## GCP Authentication
     gcloud iam service-accounts create SERVICE_ACCOUNT_NAME
     gcloud projects add-iam-policy-binding PROJECT_ID --member="serviceAccount:SERVICE_ACCOUNT_NAME@PROJECT_ID.iam.gserviceaccount.com" --role=ROLE
     gcloud iam service-accounts add-iam-policy-binding SERVICE_ACCOUNT_NAME@PROJECT_ID.iam.gserviceaccount.com --member="user:USER_EMAIL" --role=roles/iam.serviceAccountUser
 
-## Terraform: Auto Scalable GKE Nodes
+## Init GKE (Terraform: Auto Scalable GKE Nodes or cli)
 ./tf terraform (tf/cli)
     
     cluster_autoscaling = true
 
-    gcloud container clusters create CLUSTER_NAME \
+    gcloud container clusters create nodejs-helloworld \
     --enable-autoscaling \
-    --num-nodes NUM_NODES \
-    --min-nodes MIN_NODES \
-    --max-nodes MAX_NODES \
-    --region=COMPUTE_REGION
+    --num-nodes 1 \
+    --min-nodes 1 \
+    --max-nodes 3 \
+    --region=europe-west4
 
     git clone https://github.com/terraform-google-modules/terraform-google-lb-http
 
@@ -40,7 +43,7 @@ Building containers to Google Registry
 
 https://cloud.google.com/build/docs/building/build-containers#json
 
-    gcloud builds submit --tag LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE_NAME
+    gcloud builds submit --tag europe-west4-docker.pkg.dev/gcp/nodejs/nodejshelloworld
 
 ### Automatically:  gitlab ci <b>YAML</b> provided
         - docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:$CI_COMMIT_SHA .

@@ -103,6 +103,7 @@ RUN apk add --no-cache --virtual .build-deps-yarn curl gnupg tar \
   && yarn --version \
   && rm -rf /tmp/*
 
+COPY ../src/ /usr/src
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["docker-entrypoint.sh"]
 
