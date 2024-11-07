@@ -38,7 +38,7 @@ https://github.com/nodejs/docker-node/tree/9d04fec54bd5f51abe840d7af0c70787b6b32
 create a GitLab CI pipeline that builds a Node.js container and pushes it to
  Google Artifact Registry + Kubernetes Engine (GKE) 
 
-### Manually: Container Registry + Build
+### Manually: Build NodeJS Container to Google Container Registry
 Building containers to Google Registry
 
 https://cloud.google.com/build/docs/building/build-containers#json
