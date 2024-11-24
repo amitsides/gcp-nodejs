@@ -1,0 +1,122 @@
+# Jenkinsfile
+pipeline:
+  agent:
+    kubernetes:
+      yaml: |
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: nodejs
+            image: node:14
+            command:
+            - cat
+            tty: true
+          - name: docker
+            image: docker:latest
+            command:
+            - cat
+            tty: true
+            volumeMounts:
+            - name: dockersock
+              mountPath: /var/run/docker.sock
+          volumes:
+          - name: dockersock
+            hostPath:
+              path: /var/run/docker.sock
+  environment:
+    PROJECT_ID: '<YOUR_PROJECT_ID>'
+    CLUSTER_NAME: '<YOUR_CLUSTER_NAME>'
+    LOCATION: '<YOUR_CLUSTER_LOCATION>'
+    CREDENTIALS_ID: '<YOUR_CREDENTIAS_ID>'
+  stages:
+    - stage: Checkout
+      steps:
+        - checkout scm
+    - stage: Install Dependencies
+      steps:
+        - container: nodejs
+          sh: |
+            npm install
+            npm install -g typescript
+    - stage: Build
+      steps:
+        - container: nodejs
+          sh: |
+            tsc
+    - stage: Test
+      steps:
+        - container: nodejs
+          sh: npm test
+    - stage: Build Docker Image
+      steps:
+        - container: docker
+          sh: |
+            docker build -t myapp:${BUILD_NUMBER} .
+            docker tag myapp:${BUILD_NUMBER} gcr.io/${PROJECT_ID}/myapp:${BUILD_NUMBER}
+    - stage: Push to GCR
+      steps:
+        - container: docker
+          sh: |
+            echo ${GCR_CREDENTIALS} | docker login -u _json_key --password-stdin https://gcr.io
+            docker push gcr.io/${PROJECT_ID}/myapp:${BUILD_NUMBER}
+    - stage: Deploy to GKE
+      steps:
+        - step:
+            $class: KubernetesEngineBuilder
+            projectId: ${PROJECT_ID}
+            clusterName: ${CLUSTER_NAME}
+            location: ${LOCATION}
+            manifestPattern: 'k8s/*.yaml'
+            credentialsId: ${CREDENTIALS_ID}
+            verifyDeployments: true
+
+# Dockerfile
+FROM node:14
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp
+        image: gcr.io/${PROJECT_ID}/myapp:${BUILD_NUMBER}
+        ports:
+        - containerPort: 3000
+
+# k8s/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+spec:
+  selector:
+    app: myapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer
